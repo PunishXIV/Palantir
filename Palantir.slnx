@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="Palantir.Common/Palantir.Common.csproj" />
+  <Project Path="Palantir.Client/Palantir.csproj">
+    <Platform Project="x64" />
+  </Project>
+  <Project Path="Palantir.Server/Palantir.Server.csproj" />
+</Solution>

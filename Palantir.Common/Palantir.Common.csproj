@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <PackageProjectUrl>https://github.com/PunishXIV/Palantir</PackageProjectUrl>
+        <PackageLicenseExpression>BSD-3-Clause</PackageLicenseExpression>
+        <TargetFramework>net10.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+</Project>
