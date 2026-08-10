@@ -33,10 +33,10 @@ public sealed partial class DeepDungeon(
     IPluginLog log) : IDisposable
 {
     private readonly Dictionary<Guid, MarkerRow> _markers = [];
-    private readonly Dictionary<nint, RevealedTrap> _revealed = [];
-    private readonly HashSet<nint> _scanned = [];
-    private readonly List<LiveCoffer> _coffers = [];
-    private readonly List<Vector3> _hoards = [];
+
+    private readonly Dictionary<(int X, int Y, int Z), RevealedTrap> _revealedWork = [];
+    private readonly HashSet<(uint BaseId, int X, int Y, int Z)> _scanned = [];
+
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly CancellationTokenSource _shutdown = new();
 
@@ -44,8 +44,13 @@ public sealed partial class DeepDungeon(
     private CancellationTokenSource? _transition;
     private MarkerRow[] _visible = [];
     private (int Trap, int Hoard) _thresholds = (-1, -1);
-    private bool _stale = true;
+    private volatile bool _stale = true;
     private volatile ushort _territory;
+
+    private volatile RevealedTrap[] _revealed = [];
+    private volatile LiveCoffer[] _coffers = [];
+    private volatile Vector3[] _hoards = [];
+
     private byte _floor;
     private bool _safety;
     private bool _sight;
@@ -56,7 +61,7 @@ public sealed partial class DeepDungeon(
     public bool SafetyActive => _safety;
     public bool HookActive => _hook is not null;
     public bool InDeepDungeon => Territories.IsDeepDungeon(_territory);
-    public IReadOnlyDictionary<nint, RevealedTrap> Revealed => _revealed;
+    public IReadOnlyList<RevealedTrap> Revealed => _revealed;
     public IReadOnlyList<LiveCoffer> Coffers => _coffers;
 
     public IReadOnlyList<Vector3> Hoards => _hoards;
@@ -78,9 +83,11 @@ public sealed partial class DeepDungeon(
                 IEnumerable<MarkerRow> query = _markers.Values.Where(m => m.Local ||
                     m.Confirmations >= (m.Type == MarkerType.Hoard ? thresholds.Hoard : thresholds.Trap));
                 
-                if (_sight && _revealed.Count > 0)
+                var published = _revealed;
+
+                if (_sight && published.Length > 0)
                 {
-                    var revealed = _revealed.Values
+                    var revealed = published
                         .Select(r => MarkerId.For(_territory, MarkerType.Trap, r.Position.X, r.Position.Y, r.Position.Z))
                         .ToHashSet();
 

@@ -168,7 +168,7 @@ public sealed class Renderer(
 
         if (traps is { Enabled: true, Label: true } && !dungeon.SafetyActive)
         {
-            foreach (var revealed in dungeon.Revealed.Values)
+            foreach (var revealed in dungeon.Revealed)
                 if (Fade(eye, revealed.Position, traps.Distance) is { } alpha)
                     Label(revealed.Position, revealed.Name, alpha);
         }

@@ -119,35 +119,48 @@ public sealed partial class DeepDungeon
 
     private unsafe void Scan()
     {
-        _coffers.Clear();
-        _hoards.Clear();
+        List<LiveCoffer> coffers = [];
+        List<Vector3> hoards = [];
+        var revealedChanged = false;
 
         foreach (var obj in objects)
         {
             var game = (GameObject*)obj.Address;
             var baseId = game->BaseId;
             var isHoard = DungeonObjects.HoardObjects.Contains(baseId);
-            
-            if (CofferAt(obj, baseId) is { } coffer)
-                _coffers.Add(new LiveCoffer(obj.Position, coffer));
-            else if (isHoard)
-                _hoards.Add(obj.Position);
 
-            if (_scanned.Contains(obj.Address))
+            if (CofferAt(obj, baseId) is { } coffer)
+                coffers.Add(new LiveCoffer(obj.Position, coffer));
+            else if (isHoard)
+                hoards.Add(obj.Position);
+
+            var cell = MarkerId.Normalize(obj.Position.X, obj.Position.Y, obj.Position.Z);
+            var key = (baseId, cell.X, cell.Y, cell.Z);
+
+            if (_scanned.Contains(key))
                 continue;
 
             if (_sight && DungeonObjects.TrapVfx.TryGetValue(baseId, out var name))
             {
-                _scanned.Add(obj.Address);
-                _revealed[obj.Address] = new RevealedTrap(obj.Position, name);
-                Invalidate();
+                _scanned.Add(key);
+                _revealedWork[cell] = new RevealedTrap(obj.Position, name);
+                revealedChanged = true;
                 Detach(ReportAsync(obj.Position, MarkerType.Trap, Discovery.Revealed));
             }
             else if (isHoard)
             {
-                _scanned.Add(obj.Address);
+                _scanned.Add(key);
                 Detach(ReportAsync(obj.Position, MarkerType.Hoard, Discovery.Revealed));
             }
+        }
+
+        _coffers = [.. coffers];
+        _hoards = [.. hoards];
+
+        if (revealedChanged)
+        {
+            _revealed = [.. _revealedWork.Values];
+            Invalidate();
         }
     }
 
@@ -212,10 +225,11 @@ public sealed partial class DeepDungeon
     {
         _safety = false;
         _sight = false;
-        _revealed.Clear();
+        _revealedWork.Clear();
         _scanned.Clear();
-        _coffers.Clear();
-        _hoards.Clear();
+        _revealed = [];
+        _coffers = [];
+        _hoards = [];
         Invalidate();
     }
 }
