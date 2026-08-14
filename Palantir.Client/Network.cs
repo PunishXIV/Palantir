@@ -169,9 +169,10 @@ public sealed class Network(Configuration config, IPluginLog log) : IAsyncDispos
 
     private async Task SuperviseAsync()
     {
-        var token = _intent?.Token ?? CancellationToken.None;
         try
         {
+            var token = _intent?.Token ?? CancellationToken.None;
+
             for (var attempt = 0; !token.IsCancellationRequested; attempt++)
             {
                 await Task.Delay(Backoff(attempt), token);
@@ -188,7 +189,7 @@ public sealed class Network(Configuration config, IPluginLog log) : IAsyncDispos
                 }
             }
         }
-        catch (OperationCanceledException)
+        catch (Exception ex) when (ex is OperationCanceledException or ObjectDisposedException)
         {
             // intent was cleared. an explicit disconnect is never undone
         }
