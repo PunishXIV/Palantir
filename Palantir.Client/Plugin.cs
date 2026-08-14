@@ -19,6 +19,7 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] internal static IGameGui GameGui { get; private set; } = null!;
     [PluginService] internal static IFramework Framework { get; private set; } = null!;
     [PluginService] internal static IGameInteropProvider GameInterop { get; private set; } = null!;
+    [PluginService] internal static ITextureProvider Texture { get; private set; } = null!;
     [PluginService] internal static IPluginLog Log { get; private set; } = null!;
 
     private const string Command = "/palantir";
@@ -47,7 +48,7 @@ public sealed class Plugin : IDalamudPlugin
         _dungeon = new DeepDungeon(_config, _storage, _network, ClientState, Condition, ObjectTable, Framework, GameInterop, Log);
         _renderer = new Renderer(_config, _dungeon, ObjectTable, GameGui, PluginInterface, Log);
 
-        _settings = new ConfigWindow(_config, _network, Framework);
+        _settings = new ConfigWindow(_config, _network, Framework, Texture);
 #if DEBUG
         var debug = new DebugWindow(_config, _network, _storage, _dungeon);
         _main = new MainWindow(_config, _network, _storage, _dungeon, _settings, debug);

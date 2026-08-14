@@ -1,6 +1,7 @@
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Components;
+using Dalamud.Interface.Textures;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
@@ -15,6 +16,11 @@ public sealed class ConfigWindow : Window
     private readonly Configuration _config;
     private readonly Network _network;
     private readonly IFramework _framework;
+    private readonly ITextureProvider _texture;
+
+    private const uint ChestBronze = 60911; // also the mimic
+    private const uint ChestSilver = 60912;
+    private const uint ChestGold = 60913;
 
     private const string DistanceHelp =
         "How far from you markers are drawn. Large values cost frame time.";
@@ -25,12 +31,13 @@ public sealed class ConfigWindow : Window
     private string? _addError;
     private bool _adding;
 
-    public ConfigWindow(Configuration config, Network network, IFramework framework)
+    public ConfigWindow(Configuration config, Network network, IFramework framework, ITextureProvider texture)
         : base("Palantir Settings##config", ImGuiWindowFlags.NoResize)
     {
         _config = config;
         _network = network;
         _framework = framework;
+        _texture = texture;
 
         Size = WindowSize;
         SizeCondition = ImGuiCond.Always;
@@ -128,11 +135,11 @@ public sealed class ConfigWindow : Window
         DrawMergeToggle();
     }
 
-    private void DrawRow(string label, RenderCategory category, bool crowdSourced)
+    private void DrawRow(string label, RenderCategory category, bool crowdSourced, uint? icon = null)
     {
         using var _ = ImRaii.PushId(label);
 
-        NameCell(label);
+        NameCell(label, icon: icon);
 
         ImGui.TableNextColumn();
         Check("##on", category.Enabled, v => category.Enabled = v);
@@ -232,9 +239,9 @@ public sealed class ConfigWindow : Window
         Header("Colour");
         Header("Render Distance", DistanceHelp);
 
-        DrawRow("Bronze", _config.BronzeCoffers, crowdSourced: false);
-        DrawRow("Silver", _config.SilverCoffers, crowdSourced: false);
-        DrawRow("Gold", _config.GoldCoffers, crowdSourced: false);
+        DrawRow("Bronze", _config.BronzeCoffers, crowdSourced: false, ChestBronze);
+        DrawRow("Silver", _config.SilverCoffers, crowdSourced: false, ChestSilver);
+        DrawRow("Gold", _config.GoldCoffers, crowdSourced: false, ChestGold);
         DrawMimicRow();
     }
 
@@ -244,7 +251,8 @@ public sealed class ConfigWindow : Window
 
         NameCell("Mimic",
             "Only found in Palace of the Dead, on floor 49 and below. Drawn with " +
-            "the trap colour and distance above, and always drawn in DirectX mode.");
+            "the trap colour and distance above, and always drawn in DirectX mode.",
+            ChestBronze);
 
         ImGui.TableNextColumn();
         Check("##on", _config.MimicCoffers, v => _config.MimicCoffers = v);
@@ -266,7 +274,11 @@ public sealed class ConfigWindow : Window
             ImGui.CalcTextSize(header).X + (icon ? ImGui.GetStyle().ItemSpacing.X + ImGui.GetFrameHeight() : 0),
             ImGui.GetFrameHeight());
 
-    private static float NameWidth => Math.Max(Fit("Accursed Hoard"), Fit("Mimic", icon: true));
+    private static float IconSpace => ImGui.GetFrameHeight() + ImGui.GetStyle().ItemSpacing.X;
+
+    private static float NameWidth => Math.Max(
+        Fit("Accursed Hoard"),
+        IconSpace + Math.Max(Fit("Bronze"), Fit("Mimic", icon: true)));
     
     private static void Header(string label, string? help = null)
     {
@@ -277,10 +289,18 @@ public sealed class ConfigWindow : Window
             ImGuiComponents.HelpMarker(help);
     }
 
-    private static void NameCell(string label, string? help = null)
+    private void NameCell(string label, string? help = null, uint? icon = null)
     {
         ImGui.TableNextColumn();
         ImGui.AlignTextToFramePadding();
+
+        if (icon is { } id)
+        {
+            var size = ImGui.GetFrameHeight();
+            ImGui.Image(_texture.GetFromGameIcon(new GameIconLookup(id)).GetWrapOrEmpty().Handle, new Vector2(size));
+            ImGui.SameLine();
+        }
+
         ImGui.TextUnformatted(label);
 
         if (help is not null)
