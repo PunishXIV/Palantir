@@ -77,7 +77,7 @@ public sealed class ConfigWindow : Window
 
     private void DrawMarkerSection()
     {
-        using (var table = ImRaii.Table("##markers", 7, ImGuiTableFlags.SizingFixedFit))
+        using (var table = ImRaii.Table("##markers", 8, ImGuiTableFlags.SizingFixedFit))
         {
             if (table.Success)
             {
@@ -85,6 +85,7 @@ public sealed class ConfigWindow : Window
                 ImGui.TableSetupColumn("On", ImGuiTableColumnFlags.WidthFixed, Fit("On"));
                 ImGui.TableSetupColumn("Label", ImGuiTableColumnFlags.WidthFixed, Fit("Label"));
                 ImGui.TableSetupColumn("Colour", ImGuiTableColumnFlags.WidthFixed, Fit("Colour"));
+                ImGui.TableSetupColumn("Fill", ImGuiTableColumnFlags.WidthFixed, Fit("Fill", icon: true));
                 ImGui.TableSetupColumn("Integrity", ImGuiTableColumnFlags.WidthFixed,
                     Math.Max(Fit("Integrity", icon: true), 100 * ImGuiHelpers.GlobalScale));
 
@@ -97,6 +98,10 @@ public sealed class ConfigWindow : Window
                 Header("On");
                 Header("Label");
                 Header("Colour");
+                Header("Fill",
+                    "Fills the marker with a faded version of its colour. Off leaves the outer ring " +
+                    "only, so you can still see the ground underneath.\n\n" +
+                    "DirectX render mode only. VFX omens are the game's own filled effects.");
                 Header("Integrity",
                     "How many players have to confirm the same spot before Palantir shows it to you.\n\n" +
                     "Traps and hoards you find yourself always show up, however low the number.\n\n" +
@@ -143,6 +148,13 @@ public sealed class ConfigWindow : Window
         if (crowdSourced)
         {
             ImGui.TableNextColumn();
+            using (ImRaii.Disabled(category.Mode != RenderMode.DirectX))
+                Check("##fill", category.Fill, v => category.Fill = v);
+
+            if (category.Mode != RenderMode.DirectX && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                ImGui.SetTooltip("Only applies to the DirectX render mode. VFX omens are the game's own filled effects.");
+
+            ImGui.TableNextColumn();
             ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
             var integrity = category.Integrity;
             if (ImGui.SliderInt("##integrity", ref integrity, 0, 10))
@@ -185,6 +197,8 @@ public sealed class ConfigWindow : Window
             _ when traps.Mode != RenderMode.DirectX || hoards.Mode != RenderMode.DirectX =>
                 "Both categories must use the DirectX render mode. VFX omens are separate game " +
                 "objects and cannot be blended into one marker.",
+            _ when !traps.Fill => "Traps must be filled to merge. The merged marker uses the trap " +
+                                  "colour as its body and the hoard colour as its outline.",
             _ => null,
         };
 

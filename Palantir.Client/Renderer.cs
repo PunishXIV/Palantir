@@ -123,7 +123,7 @@ public sealed class Renderer(
             if (category is { Mode: RenderMode.VFX })
                 PctService.VfxRenderer.AddCircle(VfxKey(marker.Id), position, Radius, new Vector4(body, alpha));
             else
-                Ring(draw, position, body, ring, alpha);
+                Ring(draw, position, body, ring, alpha, category?.Fill ?? true);
 
             if (config.DrawDebugInfo)
             {
@@ -218,9 +218,11 @@ public sealed class Renderer(
     private string VfxKey(Guid id) =>
         _vfxKeys.TryGetValue(id, out var key) ? key : _vfxKeys[id] = id.ToString();
 
-    private static void Ring(PctDrawList draw, Vector3 position, Vector3 body, Vector3 ring, float alpha)
+    private static void Ring(PctDrawList draw, Vector3 position, Vector3 body, Vector3 ring, float alpha, bool fill = true)
     {
-        draw.AddCircleFilled(position, Radius, Pack(new Vector4(body, alpha * BodyAlpha)));
+        if (fill)
+            draw.AddCircleFilled(position, Radius, Pack(new Vector4(body, alpha * BodyAlpha)));
+
         draw.AddCircle(position, Radius, Pack(new Vector4(ring, alpha)));
     }
 

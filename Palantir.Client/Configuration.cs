@@ -18,6 +18,8 @@ public class RenderCategory
     public int Integrity { get; set; } = 4;
 
     public bool Label { get; set; }
+
+    public bool Fill { get; set; } = true;
 }
 
 public class Configuration : IPluginConfiguration
