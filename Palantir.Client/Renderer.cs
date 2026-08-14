@@ -73,7 +73,7 @@ public sealed class Renderer(
         var visible = dungeon.Visible;
         
         var merging = config.MergeTrapHoard
-                      && traps is { Enabled: true, Mode: RenderMode.DirectX }
+                      && traps is { Enabled: true, Mode: RenderMode.DirectX, Fill: true }
                       && hoards is { Enabled: true, Mode: RenderMode.DirectX }
                       && !dungeon.SafetyActive;
 
