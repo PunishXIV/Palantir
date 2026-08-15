@@ -48,7 +48,7 @@ public sealed class Plugin : IDalamudPlugin
         _dungeon = new DeepDungeon(_config, _storage, _network, ClientState, Condition, ObjectTable, Framework, GameInterop, Log);
         _renderer = new Renderer(_config, _dungeon, ObjectTable, GameGui, PluginInterface, Log);
 
-        _settings = new ConfigWindow(_config, _network, Framework, Texture);
+        _settings = new ConfigWindow(_config, _network, Framework, Texture, _storage, _dungeon);
 #if DEBUG
         var debug = new DebugWindow(_config, _network, _storage, _dungeon);
         _main = new MainWindow(_config, _network, _storage, _dungeon, _settings, debug);
