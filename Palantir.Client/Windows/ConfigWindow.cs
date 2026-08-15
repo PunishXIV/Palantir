@@ -1,11 +1,15 @@
+using System.IO;
 using System.Numerics;
+using System.Text.Json;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Components;
+using Dalamud.Interface.ImGuiFileDialog;
 using Dalamud.Interface.Textures;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
+using Palantir.Common;
 
 namespace Palantir.Windows;
 
@@ -17,6 +21,23 @@ public sealed class ConfigWindow : Window
     private readonly Network _network;
     private readonly IFramework _framework;
     private readonly ITextureProvider _texture;
+    private readonly Storage _storage;
+    private readonly DeepDungeon _dungeon;
+
+    private readonly FileDialogManager _files = new();
+
+    private static readonly JsonSerializerOptions Json =
+        new(JsonSerializerDefaults.Web) { WriteIndented = true };
+
+    private static readonly (string Label, byte? Type)[] TypeFilters =
+    [
+        ("Everything", null),
+        ("Traps only", MarkerType.Trap),
+        ("Accursed Hoard only", MarkerType.Hoard),
+    ];
+
+    private static readonly string[] Groups =
+        [.. Enum.GetValues<ETerritoryType>().Select(t => t.ToString().Split('_')[0]).Distinct()];
 
     private const uint ChestBronze = 60911; // also the mimic
     private const uint ChestSilver = 60912;
@@ -31,13 +52,28 @@ public sealed class ConfigWindow : Window
     private string? _addError;
     private bool _adding;
 
-    public ConfigWindow(Configuration config, Network network, IFramework framework, ITextureProvider texture)
+    private readonly HashSet<string> _selected = [.. Groups];
+    private int _typeFilter;
+    private bool _trustImported;
+    private bool _busy;
+    private string? _dataMessage;
+    private bool _dataFailed;
+
+    public ConfigWindow(
+        Configuration config,
+        Network network,
+        IFramework framework,
+        ITextureProvider texture,
+        Storage storage,
+        DeepDungeon dungeon)
         : base("Palantir Settings##config", ImGuiWindowFlags.NoResize)
     {
         _config = config;
         _network = network;
         _framework = framework;
         _texture = texture;
+        _storage = storage;
+        _dungeon = dungeon;
 
         Size = WindowSize;
         SizeCondition = ImGuiCond.Always;
@@ -45,12 +81,17 @@ public sealed class ConfigWindow : Window
 
     public override void Draw()
     {
-        using var tabs = ImRaii.TabBar("##tabs");
-        if (!tabs.Success)
-            return;
+        using (var tabs = ImRaii.TabBar("##tabs"))
+        {
+            if (tabs.Success)
+            {
+                DrawRendering();
+                DrawServers();
+                DrawData();
+            }
+        }
 
-        DrawRendering();
-        DrawServers();
+        _files.Draw();
     }
 
     private void DrawRendering()
@@ -389,6 +430,178 @@ public sealed class ConfigWindow : Window
         if (_addError is { } error)
             Palette.TextWrapped(Palette.Red, error);
     }
+
+    private void DrawData()
+    {
+        using var tab = ImRaii.TabItem("Data");
+        if (!tab.Success)
+            return;
+
+        if (!_storage.Available)
+        {
+            Palette.TextWrapped(Palette.Red, "No local cache. Palantir could not open its database.");
+            return;
+        }
+
+        ImGui.TextWrapped(
+            "You can export your local cache to share them with another player. An export is a " +
+            "JSON file with a .orb extension, so you can open it and see exactly what you are " +
+            "sending. Useful for periods of server downtime or in the case your chosen server " +
+            "is shut down permanently.");
+
+        ImGui.TextWrapped("Imported markers are never uploaded to a Palantir server.");
+
+        ImGui.Spacing();
+        ImGui.Separator();
+        ImGui.Spacing();
+
+        ImGui.TextUnformatted("Export");
+        ImGui.SetNextItemWidth(220 * ImGuiHelpers.GlobalScale);
+
+        using (var combo = ImRaii.Combo("##exportType", TypeFilters[_typeFilter].Label))
+        {
+            if (combo.Success)
+            {
+                for (var i = 0; i < TypeFilters.Length; i++)
+                    if (ImGui.Selectable(TypeFilters[i].Label, i == _typeFilter))
+                        _typeFilter = i;
+            }
+        }
+
+        foreach (var group in Groups)
+        {
+            var on = _selected.Contains(group);
+            if (ImGui.Checkbox(GroupName(group), ref on))
+                _ = on ? _selected.Add(group) : _selected.Remove(group);
+        }
+
+        using (ImRaii.Disabled(_busy || _selected.Count == 0))
+        {
+            if (ImGui.Button("Export..."))
+                _files.SaveFileDialog("Export markers", "Palantir Orb{.orb}",
+                    $"palantir-export-{DateTime.Now:yyyyMMdd-HHmmss}.orb", ".orb",
+                    (ok, path) => { if (ok) _ = ExportAsync(Orb(path)); });
+        }
+
+        ImGui.Spacing();
+        ImGui.Separator();
+        ImGui.Spacing();
+
+        ImGui.TextUnformatted("Import");
+        ImGui.Checkbox("Trust imported markers as my own discoveries", ref _trustImported);
+
+        ImGuiComponents.HelpMarker(
+            "Imported markers arrive with only a single confirmation, so they stay hidden until other players " +
+            "confirm them or you lower your integrity threshold. Tick this to show them straight away, as though you " +
+            "had found them yourself.\n\n" +
+            "Imported markers are never uploaded to a Palantir server either way.");
+
+        var blocker = _dungeon.InDeepDungeon
+            ? "Must not be already in a deep dungeon to import. Imported markers only load when you enter a floorset."
+            : null;
+
+        using (ImRaii.Disabled(_busy || blocker is not null))
+        {
+            if (ImGui.Button("Import..."))
+                _files.OpenFileDialog("Import markers", "Palantir Orb{.orb},.*",
+                    (ok, paths) => { if (ok && paths.Count > 0) _ = ImportAsync(paths[0]); }, 1);
+        }
+
+        if (blocker is not null && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            ImGui.SetTooltip(blocker);
+
+        if (_dataMessage is { } message)
+            Palette.TextWrapped(_dataFailed ? Palette.Red : Palette.Green, message);
+    }
+
+    private static string GroupName(string group) => group switch
+    {
+        "Palace" => "Palace of the Dead",
+        "HeavenOnHigh" => "Heaven-on-High",
+        "EurekaOrthos" => "Eureka Orthos",
+        "PilgrimsTraverse" => "Pilgrim's Traverse",
+        _ => group,
+    };
+
+    private static string Orb(string path) =>
+        path.EndsWith(".orb", StringComparison.OrdinalIgnoreCase) ? path : path + ".orb";
+
+    private async Task ExportAsync(string path)
+    {
+        _busy = true;
+
+        string message;
+        var failed = false;
+        try
+        {
+            var type = TypeFilters[_typeFilter].Type;
+            var markers = (await _storage.All())
+                .Where(r => (type is null || r.Type == type)
+                            && _selected.Contains(Group(r.Territory))
+                            && MarkerId.IsValid(r.X, r.Y, r.Z))
+                .Select(r => r.ToMarker())
+                .ToArray();
+
+            var export = new MarkerExport(Storage.ExportVersion, DateTime.UtcNow, markers);
+            await File.WriteAllTextAsync(path, JsonSerializer.Serialize(export, Json));
+
+            message = $"Exported {markers.Length} marker(s).";
+        }
+        catch (Exception ex)
+        {
+            message = ex.Message;
+            failed = true;
+        }
+
+        await _framework.RunOnTick(() => Done(message, failed));
+    }
+
+    private async Task ImportAsync(string path)
+    {
+        _busy = true;
+
+        string message;
+        var failed = false;
+        try
+        {
+            var export = JsonSerializer.Deserialize<MarkerExport>(await File.ReadAllTextAsync(path), Json)
+                         ?? throw new InvalidOperationException("That file is empty.");
+
+            if (export.Version != Storage.ExportVersion)
+                throw new InvalidOperationException(
+                    $"That file is export v{export.Version}; this plugin reads v{Storage.ExportVersion}.");
+
+            var markers = (export.Markers ?? [])
+                .Where(m => Territories.IsDeepDungeon(m.Territory)
+                            && MarkerType.IsPersistable(m.Type)
+                            && MarkerId.IsValid(m.X, m.Y, m.Z))
+                .Select(m => m with { Id = MarkerId.For(m.Territory, m.Type, m.X, m.Y, m.Z) })
+                .DistinctBy(m => m.Id)
+                .ToArray();
+
+            var (added, known) = await _storage.Import(markers, _trustImported);
+
+            message = $"{added} imported, {known} already known, " +
+                      $"{(export.Markers?.Length ?? 0) - markers.Length} rejected.";
+        }
+        catch (Exception ex)
+        {
+            message = ex.Message;
+            failed = true;
+        }
+
+        await _framework.RunOnTick(() => Done(message, failed));
+    }
+
+    private void Done(string message, bool failed)
+    {
+        _busy = false;
+        _dataMessage = message;
+        _dataFailed = failed;
+    }
+
+    private static string Group(ushort territory) =>
+        Enum.GetName((ETerritoryType)territory)?.Split('_')[0] ?? "";
 
     private static void Field(string label)
     {
