@@ -3,6 +3,7 @@ using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
+using Lumina.Data.Parsing.Scd;
 using Palantir.Common;
 using Palantir.MobInformation;
 using Pictomancy;
@@ -277,7 +278,22 @@ public sealed class Renderer(
                     if (soundInfo.Mode is RenderMode.DirectX)
                         draw.AddCircleFilled(mob.position, size, ImGui.ColorConvertFloat4ToU32(colour));
                     else if (soundInfo.Mode is RenderMode.VFX)
-                        PctService.VfxRenderer.AddCircle($"{mob.baseId}_{mob.entityId}", mob.position, size, color: colour);
+                    {
+                        if (soundInfo.Type is VfxType.Pulse)
+                        {
+                            PctService.VfxRenderer.AddCircle($"{mob.baseId}_{mob.entityId}", mob.position, size, color: colour);
+                        }
+                        else if (soundInfo.Type is VfxType.Static)
+                        {
+                            string solid_light = "k5d1_omen_o01pg";
+                            PctService.VfxRenderer.AddOmen($"{mob.baseId}_{mob.entityId}", solid_light, position, new(size), 0, CompensateVfxColor(colour));
+                        }
+                        else if (soundInfo.Type is VfxType.Light_Pulse)
+                        {
+                            string light_pulse = "m0531_light_o0v";
+                            PctService.VfxRenderer.AddOmen($"{mob.baseId}_{mob.entityId}", light_pulse, position, new(size), 0, colour);
+                        }
+                    }
                 }
                 else if (aggroType is AggroType.Proximity && config.ProximityMobs.Enabled)
                 {
@@ -289,7 +305,22 @@ public sealed class Renderer(
                     if (proxyInfo.Mode is RenderMode.DirectX)
                         draw.AddCircleFilled(mob.position, size, ImGui.ColorConvertFloat4ToU32(colour));
                     else if (proxyInfo.Mode is RenderMode.VFX)
-                        PctService.VfxRenderer.AddCircle($"{mob.baseId}_{mob.entityId}", mob.position, size, color: colour);
+                    {
+                        if (proxyInfo.Type is VfxType.Pulse)
+                        {
+                            PctService.VfxRenderer.AddCircle($"{mob.baseId}_{mob.entityId}", mob.position, size, color: colour);
+                        }
+                        else if (proxyInfo.Type is VfxType.Static)
+                        {
+                            string solid_light = "k5d1_omen_o01pg";
+                            PctService.VfxRenderer.AddOmen($"{mob.baseId}_{mob.entityId}", solid_light, position, new(size), 0, CompensateVfxColor(colour));
+                        }
+                        else if (proxyInfo.Type is VfxType.Light_Pulse)
+                        {
+                            string light_pulse = "m0531_light_o0v";
+                            PctService.VfxRenderer.AddOmen($"{mob.baseId}_{mob.entityId}", light_pulse, position, new(size), 0, colour);
+                        }
+                    }
                 }
 
                 bool patrolMob = (aggroInfo.Patrol is { } patrol && patrol);
@@ -468,6 +499,16 @@ public sealed class Renderer(
     // 3 seems to be the best point? 
     private const float RedBoost = 3.0f;
     private static Vector3 CompensateVfxColor(Vector3 color)
+    {
+        if (color.X <= 0f)
+            return color;
+
+        var dominance = color.X / MathF.Max(color.X, MathF.Max(color.Y, color.Z));
+        var boost = 1f + (RedBoost - 1f) * dominance;
+
+        return color with { X = color.X * boost };
+    }
+    private static Vector4 CompensateVfxColor(Vector4 color)
     {
         if (color.X <= 0f)
             return color;

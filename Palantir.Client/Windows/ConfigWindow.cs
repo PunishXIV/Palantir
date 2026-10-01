@@ -48,6 +48,7 @@ public sealed class ConfigWindow : Window
         "How far from you markers are drawn. Large values cost frame time.";
 
     private static readonly RenderMode[] RenderModes = Enum.GetValues<RenderMode>();
+    private static readonly VfxType[] VfxTypes = Enum.GetValues<VfxType>();
 
     private string _newServer = "";
     private string? _addError;
@@ -230,21 +231,10 @@ public sealed class ConfigWindow : Window
 
         ImGui.TableNextColumn();
         ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
-        
-        using var mode = ImRaii.Combo("##mode", category.Mode.ToString());
-        if (!mode.Success)
-            return;
 
-        foreach (var option in RenderModes)
-        {
-            if (!ImGui.Selectable(option.ToString(), category.Mode == option))
-                continue;
-
-            category.Mode = option;
-            _config.Save();
-        }
+        EnumCombo("##Mode", category.Mode, RenderModes, v => category.Mode = v);
     }
-    private void DrawRow(string label, MobCategory category, bool crowdSourced, uint? icon = null)
+    private void DrawRow(string label, MobCategory category, bool vfxOption, bool customVfx, uint? icon = null)
     {
         using var _ = ImRaii.PushId(label);
 
@@ -265,24 +255,18 @@ public sealed class ConfigWindow : Window
         ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
         DistanceSlider(category);
 
-        if (!crowdSourced)
+        if (!vfxOption)
             return;
 
         ImGui.TableNextColumn();
-        ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
+        EnumCombo("##mode", category.Mode, RenderModes, v => category.Mode = v);
 
-        using var mode = ImRaii.Combo("##mode", category.Mode.ToString());
-        if (!mode.Success)
+        if (!customVfx)
             return;
 
-        foreach (var option in RenderModes)
-        {
-            if (!ImGui.Selectable(option.ToString(), category.Mode == option))
-                continue;
-
-            category.Mode = option;
-            _config.Save();
-        }
+        ImGui.TableNextColumn();
+        using var customDisabled = ImRaii.Disabled(category.Mode == RenderMode.DirectX);
+        EnumCombo("##Type", category.Type, VfxTypes, v => category.Type = v);
     }
     private void DrawMergeToggle()
     {
@@ -363,7 +347,7 @@ public sealed class ConfigWindow : Window
     }
     private void DrawMobSelection()
     {
-        using var table = ImRaii.Table("##mobInfo", 6, ImGuiTableFlags.SizingFixedFit);
+        using var table = ImRaii.Table("##mobInfo", 7, ImGuiTableFlags.SizingFixedFit);
         if (!table.Success)
             return;
 
@@ -373,6 +357,7 @@ public sealed class ConfigWindow : Window
         ImGui.TableSetupColumn("Colour", ImGuiTableColumnFlags.WidthFixed, Fit("Colour"));
         ImGui.TableSetupColumn("Render Distance", ImGuiTableColumnFlags.WidthStretch);
         ImGui.TableSetupColumn("Mode", ImGuiTableColumnFlags.WidthFixed, Math.Max(Fit("Mode", icon: true), 90 * ImGuiHelpers.GlobalScale));
+        ImGui.TableSetupColumn("Type", ImGuiTableColumnFlags.WidthFixed, Math.Max(Fit("Vfx Type", icon: true), 90 * ImGuiHelpers.GlobalScale));
         
 
         ImGui.TableNextRow(ImGuiTableRowFlags.Headers);
@@ -384,13 +369,19 @@ public sealed class ConfigWindow : Window
         Header("Mode",
                "DirectX is the default, will show the kind of agro around that mob\n" +
                "Patrol mobs will use both the facing arrow, and the aggro type that it is if enabled.\n\n" +
-               "VFX uses the game's own omen effects. They look more native and sit to the ground, but" +
+               "VFX uses the game's own omen effects. They look more native and sit to the ground, but " +
                "anything in front of them hids them. Easy to mistake for an enemies attack telegraph.");
+        Header("Vfx Type",
+               "Which type of vfx would you like to see (when mode is VFX)\n" +
+               "Pulse is default, offers a standard color but can easily see the pulse\n" +
+               "Light_Pulse is a different variation of it, has a ring that floats above it slightly and the pulse is also less noticible\n" +
+               "Static is just a pure circle\n" +
+               "Unfort, there is no options for fan pulse due to there being no static fan pulse");
 
-        DrawRow("Sight", _config.SightMobs, true, 240201);
-        DrawRow("Proximity", _config.ProximityMobs, true, 240212);
-        DrawRow("Sound", _config.SoundMobs, true, 230426);
-        DrawRow("Patrol", _config.PatrolMobs, false, 240213);
+        DrawRow("Sight", _config.SightMobs, true, false, 240201);
+        DrawRow("Proximity", _config.ProximityMobs, true, true, 240212);
+        DrawRow("Sound", _config.SoundMobs, true, true, 230426);
+        DrawRow("Patrol", _config.PatrolMobs, false, false, 240213);
     }
     private void DrawLandMarkSection()
     {
@@ -438,7 +429,8 @@ public sealed class ConfigWindow : Window
 
     private void NameCell(string label, string? help = null, uint? icon = null)
     {
-        ImGui.TableNextColumn();
+        ImGui.TableNextRow();
+        ImGui.TableSetColumnIndex(0);
         ImGui.AlignTextToFramePadding();
 
         if (icon is { } id)
@@ -461,6 +453,23 @@ public sealed class ConfigWindow : Window
 
         set(value);
         _config.Save();
+    }
+    private void EnumCombo<T>(string id, T current, IEnumerable<T> options, Action<T> set) where T : notnull
+    {
+        ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
+
+        using var combo = ImRaii.Combo(id, current.ToString() ?? string.Empty);
+        if (!combo.Success)
+            return;
+
+        foreach (var option in options)
+        {
+            if (!ImGui.Selectable(option.ToString() ?? string.Empty, EqualityComparer<T>.Default.Equals(current, option)))
+                continue;
+
+            set(option);
+            _config.Save();
+        }
     }
 
     private void DistanceSlider(RenderCategory category)
