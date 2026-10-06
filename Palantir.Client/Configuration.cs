@@ -7,6 +7,7 @@ using Newtonsoft.Json;
 namespace Palantir;
 
 public enum RenderMode { DirectX, VFX }
+public enum VfxType { Pulse, Light_Pulse, Static }
 
 public class RenderCategory
 {
@@ -29,6 +30,7 @@ public class MobCategory
     public Vector4 Colour { get; set; }
     public RenderMode Mode { get; set; } = RenderMode.DirectX;
     public bool Label { get; set; } = true;
+    public VfxType Type { get; set; } = VfxType.Pulse;
 }
 
 public class Configuration : IPluginConfiguration
@@ -67,9 +69,9 @@ public class Configuration : IPluginConfiguration
     public RenderCategory GoldCoffers { get; set; } = new() { Colour = new Vector3(1f, 0.88f, 0.35f) };      // #FFE059
 
     public MobCategory SightMobs { get; set; } = new() { Colour = new Vector4(1f, 0f, 0f, 0.5f) };
-    public MobCategory ProximityMobs { get; set; } = new() { Colour = new Vector4(1f, 0f, 0f, 0.5f) };
-    public MobCategory SoundMobs { get; set; } = new() { Colour = new Vector4(0.5f, 0.0f, 0.5f, 0.5f) };
-    public MobCategory PatrolMobs { get; set; } = new() { Colour = new Vector4(1f, 0f, 0f, 1f), Distance = 100 };
+    public MobCategory ProximityMobs { get; set; } = new() { Colour = new(1f, 0.5333f, 0f, 0.502f) };
+    public MobCategory SoundMobs { get; set; } = new() { Colour = new Vector4(0f, 1f, 0.6f, 0.502f) };
+    public MobCategory PatrolMobs { get; set; } = new() { Colour = new Vector4(1f, 0.9569f, 0f, 1f), Distance = 100 };
 
     public bool MimicCoffers { get; set; }
 
