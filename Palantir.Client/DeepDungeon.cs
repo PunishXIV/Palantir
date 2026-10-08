@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using Dalamud.Hooking;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
+using FFXIVClientStructs.FFXIV.Client.Game.InstanceContent;
 using Palantir.Common;
 using Vector3 = System.Numerics.Vector3;
 
@@ -16,6 +17,10 @@ public enum LandmarkKind { Passage, Return, Votife }
 public readonly record struct LiveCoffer(Vector3 Position, CofferKind Kind);
 public readonly record struct Landmarks(Vector3 position, LandmarkKind Kind);
 public readonly record struct LiveMobs(Vector3 position, uint baseId, uint BnpcId, float hitbox, float rotation, uint entityId, bool inCombat, string name);
+
+public readonly record struct FloorMap(
+    InstanceContentDeepDungeon.RoomFlags[] Rooms, byte[] Chests, int Player, float Rotation, int[] Party,
+    bool PassageOpen, bool ReturnOpen);
 
 public enum Discovery
 {

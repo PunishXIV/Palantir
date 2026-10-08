@@ -19,6 +19,18 @@ internal static class Palette
     }
 }
 
+internal static class GameIcon
+{
+    public const uint ReturnClosed = 60905;
+    public const uint ReturnOpen = 60906;
+    public const uint PassageClosed = 60907;
+    public const uint PassageOpen = 60908;
+    public const uint ChestBronze = 60911; // also the mimic
+    public const uint ChestSilver = 60912;
+    public const uint ChestGold = 60913;
+    public const uint Votive = 63988;
+}
+
 public sealed class MainWindow : Window
 {
     private const float Width = 350;
@@ -28,6 +40,7 @@ public sealed class MainWindow : Window
     private readonly Storage _storage;
     private readonly DeepDungeon _dungeon;
     private readonly ConfigWindow _settings;
+    private readonly MinimapWindow _minimap;
 #if DEBUG
     private readonly DebugWindow _debug;
 #endif
@@ -39,7 +52,8 @@ public sealed class MainWindow : Window
         Network network,
         Storage storage,
         DeepDungeon dungeon,
-        ConfigWindow settings
+        ConfigWindow settings,
+        MinimapWindow minimap
 #if DEBUG
         , DebugWindow debug
 #endif
@@ -50,6 +64,7 @@ public sealed class MainWindow : Window
         _storage = storage;
         _dungeon = dungeon;
         _settings = settings;
+        _minimap = minimap;
 #if DEBUG
         _debug = debug;
 #endif
@@ -92,6 +107,12 @@ public sealed class MainWindow : Window
                 Palette.TextWrapped(Palette.Amber, _storage.Available
                     ? "Discoveries are saved locally and upload when you reconnect."
                     : "Discoveries upload only if you reconnect before leaving this floorset.");
+        }
+
+        if (!_config.Minimap.Detached && _minimap.Current() is { } map)
+        {
+            ImGui.Separator();
+            _minimap.DrawMap(map, ImGui.GetContentRegionAvail().X / MinimapWindow.Columns, centre: true);
         }
 
         ImGui.Separator();

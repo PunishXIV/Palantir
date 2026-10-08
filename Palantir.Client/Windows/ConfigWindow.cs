@@ -40,10 +40,6 @@ public sealed class ConfigWindow : Window
     private static readonly string[] Groups =
         [.. Enum.GetValues<ETerritoryType>().Select(t => t.ToString().Split('_')[0]).Distinct()];
 
-    private const uint ChestBronze = 60911; // also the mimic
-    private const uint ChestSilver = 60912;
-    private const uint ChestGold = 60913;
-
     private const string DistanceHelp =
         "How far from you markers are drawn. Large values cost frame time.";
 
@@ -88,6 +84,7 @@ public sealed class ConfigWindow : Window
             if (tabs.Success)
             {
                 DrawRendering();
+                DrawMinimap();
                 DrawServers();
                 DrawData();
             }
@@ -314,9 +311,9 @@ public sealed class ConfigWindow : Window
         Header("Colour");
         Header("Render Distance", DistanceHelp);
 
-        DrawRow("Bronze", _config.BronzeCoffers, crowdSourced: false, ChestBronze);
-        DrawRow("Silver", _config.SilverCoffers, crowdSourced: false, ChestSilver);
-        DrawRow("Gold", _config.GoldCoffers, crowdSourced: false, ChestGold);
+        DrawRow("Bronze", _config.BronzeCoffers, crowdSourced: false, GameIcon.ChestBronze);
+        DrawRow("Silver", _config.SilverCoffers, crowdSourced: false, GameIcon.ChestSilver);
+        DrawRow("Gold", _config.GoldCoffers, crowdSourced: false, GameIcon.ChestGold);
         DrawMimicRow();
     }
 
@@ -329,7 +326,7 @@ public sealed class ConfigWindow : Window
             "POTD: <= Floor 49" +
             "HoH/EO/PT: <= Floor 29 " +
             "the trap colour and distance above, and always drawn in DirectX mode.",
-            ChestBronze);
+            GameIcon.ChestBronze);
 
         ImGui.TableNextColumn();
         Check("##on", _config.MimicCoffers, v => _config.MimicCoffers = v);
@@ -402,9 +399,9 @@ public sealed class ConfigWindow : Window
         Header("Colour");
         Header("Render Distance", DistanceHelp);
 
-        DrawRow("Passage", _config.Passage, crowdSourced: false, 060908);
-        DrawRow("Return", _config.Return, crowdSourced: false, 060906);
-        DrawRow("Votife", _config.Votife, crowdSourced: false, 063988);
+        DrawRow("Passage", _config.Passage, crowdSourced: false, GameIcon.PassageOpen);
+        DrawRow("Return", _config.Return, crowdSourced: false, GameIcon.ReturnOpen);
+        DrawRow("Votife", _config.Votife, crowdSourced: false, GameIcon.Votive);
     }
     
     private static float Fit(string header, bool icon = false) =>
@@ -501,6 +498,42 @@ public sealed class ConfigWindow : Window
         if (ImGui.ColorEdit4("##colour", ref colour, ImGuiColorEditFlags.NoInputs))
             category.Colour = colour;
         SaveOnRelease();
+    }
+
+    private void DrawMinimap()
+    {
+        using var tab = ImRaii.TabItem("Minimap");
+        if (!tab.Success)
+            return;
+
+        var minimap = _config.Minimap;
+
+        Check("Show minimap", minimap.Enabled, v => minimap.Enabled = v);
+
+        using var disabled = ImRaii.Disabled(!minimap.Enabled);
+
+        Check("Show party members", minimap.Party, v => minimap.Party = v);
+        Check("Only show active rooms", minimap.ActiveOnly, v => minimap.ActiveOnly = v);
+        Check("Detach into its own window", minimap.Detached, v => minimap.Detached = v);
+
+        using (ImRaii.Disabled(!minimap.Detached))
+        using (ImRaii.PushIndent())
+        {
+            var scale = minimap.Scale;
+            ImGui.SetNextItemWidth(220 * ImGuiHelpers.GlobalScale);
+            if (ImGui.SliderFloat("Scale", ref scale, 0.5f, 3f, "%.2fx"))
+                minimap.Scale = scale;
+            SaveOnRelease();
+
+            var opacity = minimap.Opacity;
+            ImGui.SetNextItemWidth(220 * ImGuiHelpers.GlobalScale);
+            if (ImGui.SliderFloat("Background opacity", ref opacity, 0f, 1f, "%.2f"))
+                minimap.Opacity = opacity;
+            SaveOnRelease();
+
+            Check("Lock position", minimap.Locked, v => minimap.Locked = v);
+            Check("Click-through", minimap.ClickThrough, v => minimap.ClickThrough = v);
+        }
     }
 
     private void DrawServers()

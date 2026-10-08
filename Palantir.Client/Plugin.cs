@@ -49,14 +49,16 @@ public sealed class Plugin : IDalamudPlugin
         _renderer = new Renderer(_config, _dungeon, ObjectTable, GameGui, PluginInterface, Log);
 
         _settings = new ConfigWindow(_config, _network, Framework, Texture, _storage, _dungeon);
+        var minimap = new MinimapWindow(_config, _dungeon, Texture);
 #if DEBUG
         var debug = new DebugWindow(_config, _network, _storage, _dungeon);
-        _main = new MainWindow(_config, _network, _storage, _dungeon, _settings, debug);
+        _main = new MainWindow(_config, _network, _storage, _dungeon, _settings, minimap, debug);
         _windows.AddWindow(debug);
 #else
-        _main = new MainWindow(_config, _network, _storage, _dungeon, _settings);
+        _main = new MainWindow(_config, _network, _storage, _dungeon, _settings, minimap);
 #endif
         _windows.AddWindow(_settings);
+        _windows.AddWindow(minimap);
         _windows.AddWindow(_main);
 
         _dungeon.Start();

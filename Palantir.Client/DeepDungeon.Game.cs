@@ -28,6 +28,9 @@ public sealed partial class DeepDungeon
     private const uint SightAction = 6260;
     private const uint IntuitionAction = 6870;
 
+    private const uint InvalidEntity = 0xE0000000;
+    private const byte Unlocked = 11; // pass 
+
     private unsafe delegate void ActionEffect(uint casterId, Character* caster, Vector3* position,
         ActionEffectHandler.Header* header, ActionEffectHandler.TargetEffects* effects, GameObjectId* targets);
     
@@ -69,6 +72,41 @@ public sealed partial class DeepDungeon
 
         return (dungeon->Floor, dungeon->HoardCount, dungeon->LayoutInitializationType, pomanders);
     }
+
+    public unsafe FloorMap? Map()
+    {
+        var dungeon = EventFramework.Instance()->GetInstanceContentDeepDungeon();
+        if (dungeon == null || IsBossFloor(dungeon->DeepDungeonId, dungeon->Floor))
+            return null;
+
+        var rooms = dungeon->MapData.ToArray();
+
+        var chests = new byte[rooms.Length];
+        foreach (var chest in dungeon->Chests)
+            if (chest.ChestType is >= 1 and <= 3 && chest.RoomIndex >= 0 && chest.RoomIndex < rooms.Length)
+                chests[chest.RoomIndex] |= (byte)(1 << (chest.ChestType - 1));
+
+        var player = objects.LocalPlayer;
+        var self = -1;
+        List<int> party = [];
+
+        foreach (var member in dungeon->Party)
+        {
+            if (member.EntityId is 0 or InvalidEntity || member.RoomIndex < 0 || member.RoomIndex >= rooms.Length)
+                continue;
+
+            if (member.EntityId == player?.EntityId)
+                self = member.RoomIndex;
+            else
+                party.Add(member.RoomIndex);
+        }
+
+        return new FloorMap(rooms, chests, self, player?.Rotation ?? 0, [.. party],
+            dungeon->PassageProgress >= Unlocked, dungeon->ReturnProgress >= Unlocked);
+    }
+
+    private static bool IsBossFloor(byte dungeon, byte floor) =>
+        floor == 0 || floor % 10 == 0 || (dungeon is 3 or 4 && floor == 99); // EO, PT
 
 #if DEBUG
     public readonly record struct NearbyObject(

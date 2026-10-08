@@ -33,6 +33,18 @@ public class MobCategory
     public VfxType Type { get; set; } = VfxType.Pulse;
 }
 
+public class MinimapSettings
+{
+    public bool Enabled { get; set; } = true;
+    public bool Detached { get; set; }
+    public float Scale { get; set; } = 1f;
+    public float Opacity { get; set; } = 0.8f;
+    public bool Locked { get; set; }
+    public bool ClickThrough { get; set; }
+    public bool Party { get; set; } = true;
+    public bool ActiveOnly { get; set; } = true;
+}
+
 public class Configuration : IPluginConfiguration
 {
     public const string DefaultServer = "https://palantir.puni.sh";
@@ -78,6 +90,8 @@ public class Configuration : IPluginConfiguration
     public bool MimicLabel { get; set; } = true;
 
     public bool MergeTrapHoard { get; set; } = true;
+
+    public MinimapSettings Minimap { get; set; } = new();
 
     public Dictionary<string, string> Accounts { get; set; } = [];
 
