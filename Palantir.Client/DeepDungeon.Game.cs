@@ -144,6 +144,11 @@ public sealed partial class DeepDungeon
 
         var floor = ReadFloor();
         MobList();
+        if (!_intuition && IsIntuitionActive())
+        {
+            _intuition = true;
+            Invalidate();
+        }
 
         if (floor != 0 && floor != _floor)
         {
@@ -283,6 +288,7 @@ public sealed partial class DeepDungeon
                     _sight = true;
                     Invalidate();
                 }
+               
             }
         }
         catch (Exception ex)
@@ -302,10 +308,21 @@ public sealed partial class DeepDungeon
         return dungeon != null ? dungeon->Floor : (byte)0;
     }
 
+    private unsafe bool IsIntuitionActive()
+    {
+        var dungeon = EventFramework.Instance()->GetInstanceContentDeepDungeon();
+        if (dungeon is null)
+            return false;
+
+        var items = dungeon->Items;
+        return items[13].IsActive;
+    }
+
     private void ResetFloor()
     {
         _safety = false;
         _sight = false;
+        _intuition = false;
         _revealedWork.Clear();
         _scanned.Clear();
         _revealed = [];

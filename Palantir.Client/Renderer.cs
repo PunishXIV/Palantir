@@ -7,6 +7,7 @@ using Lumina.Data.Parsing.Scd;
 using Palantir.Common;
 using Palantir.MobInformation;
 using Pictomancy;
+using System.Net.NetworkInformation;
 using System.Numerics;
 using System.Reflection;
 using static Palantir.MobInformation.MobDatabase;
@@ -68,6 +69,7 @@ public sealed class Renderer(
             return;
 
         DrawMarkerLayer(draw, player.Position);
+        DrawRevealedHoards(draw, player.Position);
         DrawLandmarks(draw, player.Position);
         DrawMobs(draw, player.Position);
         DrawCofferLayer(draw, player.Position);
@@ -78,14 +80,17 @@ public sealed class Renderer(
     {
         var traps = config.Traps;
         var hoards = config.Hoards;
-        
-        var visible = dungeon.Visible;
+
+        var visible = dungeon.IntuitionActive
+            ? dungeon.Visible.Where(m => m.Type != MarkerType.Hoard)
+            : dungeon.Visible;
 
         var merging = config.MergeTrapHoard
                       && traps is { Enabled: true, Fill: true }
                       && hoards is { Enabled: true }
                       && traps.Mode == hoards.Mode
-                      && !dungeon.SafetyActive;
+                      && !dungeon.SafetyActive
+                      && !dungeon.IntuitionActive;
 
         _trapCells.Clear();
         _hoardCells.Clear();
@@ -119,7 +124,7 @@ public sealed class Renderer(
             var merged = merging && category is not null
                          && (marker.Type == MarkerType.Trap ? _hoardCells : _trapCells)
                              .Contains(MarkerId.Normalize(marker.X, marker.Y, marker.Z));
-            
+
             if (merged && marker.Type == MarkerType.Hoard)
                 continue;
 
@@ -138,7 +143,6 @@ public sealed class Renderer(
 
                 if (merged)
                 {
-
                     // Donut sizing things, it needs to scale properly to render
                     // All of these are currently based on the ring itself being 1.6f, if we end up changing it, inner donut will need to be adjusted
                     // have some values below in case you want to test it out yourself in the future to see if it would look better...
@@ -167,6 +171,40 @@ public sealed class Renderer(
                     Pack(new Vector4(1f, 1f, 1f, alpha)),
                     $"{marker.Id}\nTerritoryType {marker.Territory}\nX {marker.X}\nY {marker.Y}\nZ {marker.Z}\nIntegrity: {marker.Confirmations}{suffix}",
                     1f);
+            }
+        }
+    }
+
+    private void DrawRevealedHoards(PctDrawList draw, Vector3 eye)
+    {
+        if (!dungeon.IntuitionActive)
+            return;
+
+        var hoards = config.Hoards;
+        if (hoards is not { Enabled: true })
+            return;
+
+        foreach (var hoard in dungeon.Hoards)
+        {
+            if (Fade(eye, hoard, hoards.Distance) is not { } alpha)
+                continue;
+
+            if (hoards.Mode is RenderMode.VFX)
+            {
+                const string solid_light = "k5d1_omen_o01pg";
+                var (cx, cy, cz) = MarkerId.Normalize(hoard.X, hoard.Y, hoard.Z);
+
+                PctService.VfxRenderer.AddOmen(
+                    $"revealed_hoard_{cx}_{cy}_{cz}",
+                    solid_light,
+                    hoard,
+                    new(Radius),
+                    0,
+                    new Vector4(CompensateVfxColor(hoards.Colour), alpha));
+            }
+            else
+            {
+                Ring(draw, hoard, hoards.Colour, hoards.Colour, alpha, hoards.Fill);
             }
         }
     }

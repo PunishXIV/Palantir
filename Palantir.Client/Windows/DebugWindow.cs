@@ -54,41 +54,51 @@ public sealed class DebugWindow(Configuration config, Network network, Storage s
 
         ImGui.Separator();
         ImGui.TextUnformatted("Nearby objects");
-        
-        using var objects = ImRaii.Table("##objects", 9,
+
+        using (var objects = ImRaii.Table("##objects", 9,
             ImGuiTableFlags.Borders | ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.ScrollY | ImGuiTableFlags.ScrollX,
-            new Vector2(0, 260));
-
-        if (!objects.Success)
-            return;
-
-        ImGui.TableSetupColumn("BaseId");
-        ImGui.TableSetupColumn("Kind");
-        ImGui.TableSetupColumn("Model");
-        ImGui.TableSetupColumn("Targ");
-        ImGui.TableSetupColumn("Event");
-        ImGui.TableSetupColumn("Vis");
-        ImGui.TableSetupColumn("Render");
-        ImGui.TableSetupColumn("Name");
-        ImGui.TableSetupColumn("Distance");
-        ImGui.TableHeadersRow();
-
-        foreach (var o in dungeon.NearbyObjects())
+            new Vector2(0, 260)))
         {
-            ImGui.TableNextColumn(); ImGui.TextUnformatted(o.BaseId.ToString());
-            ImGui.TableNextColumn(); ImGui.TextUnformatted(o.Kind.ToString());
+            if (!objects.Success)
+                return;
 
-            ImGui.TableNextColumn();
-            if (o.HasModel) ImGui.TextUnformatted("yes");
-            else ImGui.TextColored(Palette.Amber, "no");
+            ImGui.TableSetupColumn("BaseId");
+            ImGui.TableSetupColumn("Kind");
+            ImGui.TableSetupColumn("Model");
+            ImGui.TableSetupColumn("Targ");
+            ImGui.TableSetupColumn("Event");
+            ImGui.TableSetupColumn("Vis");
+            ImGui.TableSetupColumn("Render");
+            ImGui.TableSetupColumn("Name");
+            ImGui.TableSetupColumn("Distance");
+            ImGui.TableHeadersRow();
 
-            ImGui.TableNextColumn(); ImGui.TextUnformatted(o.Targetable.ToString());
-            ImGui.TableNextColumn(); ImGui.TextUnformatted(o.EventState.ToString());
-            ImGui.TableNextColumn(); ImGui.TextUnformatted(o.Visibility.ToString());
-            ImGui.TableNextColumn(); ImGui.TextUnformatted(o.RenderFlags.ToString());
-            ImGui.TableNextColumn(); ImGui.TextUnformatted(o.Name);
-            ImGui.TableNextColumn(); ImGui.TextUnformatted($"{o.Distance:F1}");
+            foreach (var o in dungeon.NearbyObjects())
+            {
+                ImGui.TableNextColumn(); ImGui.TextUnformatted(o.BaseId.ToString());
+                ImGui.TableNextColumn(); ImGui.TextUnformatted(o.Kind.ToString());
+
+                ImGui.TableNextColumn();
+                if (o.HasModel) ImGui.TextUnformatted("yes");
+                else ImGui.TextColored(Palette.Amber, "no");
+
+                ImGui.TableNextColumn(); ImGui.TextUnformatted(o.Targetable.ToString());
+                ImGui.TableNextColumn(); ImGui.TextUnformatted(o.EventState.ToString());
+                ImGui.TableNextColumn(); ImGui.TextUnformatted(o.Visibility.ToString());
+                ImGui.TableNextColumn(); ImGui.TextUnformatted(o.RenderFlags.ToString());
+                ImGui.TableNextColumn(); ImGui.TextUnformatted(o.Name);
+                ImGui.TableNextColumn(); ImGui.TextUnformatted($"{o.Distance:F1}");
+            }
+
         }
+
+        ImGui.TextUnformatted($"Intuition latched: {dungeon.IntuitionActive} · Safety: {dungeon.SafetyActive}");
+
+        var itemActive = string.Join(", ",
+            pomanders.Select((p, i) => (p, i))
+                     .Where(x => x.p.Active)
+                     .Select(x => $"slot {x.i} (item {x.p.Item})"));
+        ImGui.TextUnformatted($"Active slots: {(itemActive.Length == 0 ? "none" : itemActive)}");
     }
 }
 #endif

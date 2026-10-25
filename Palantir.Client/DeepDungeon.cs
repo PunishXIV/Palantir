@@ -64,11 +64,13 @@ public sealed partial class DeepDungeon(
     private byte _floor;
     private bool _safety;
     private bool _sight;
+    private bool _intuition;
     private int _tick;
     private bool _started;
 
     public byte Floor => _floor;
     public bool SafetyActive => _safety;
+    public bool IntuitionActive => _intuition;
     public bool HookActive => _hook is not null;
     public bool InDeepDungeon => Territories.IsDeepDungeon(_territory);
     public IReadOnlyList<RevealedTrap> Revealed => _revealed;
