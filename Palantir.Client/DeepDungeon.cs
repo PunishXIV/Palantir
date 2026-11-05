@@ -97,7 +97,7 @@ public sealed partial class DeepDungeon(
 
                 IEnumerable<MarkerRow> query = _markers.Values.Where(m => m.Local ||
                     m.Confirmations >= (m.Type == MarkerType.Hoard ? thresholds.Hoard : thresholds.Trap));
-
+                
                 var published = _revealed;
 
                 if (_sight && published.Length > 0)
@@ -430,9 +430,7 @@ public sealed partial class DeepDungeon(
         Id = marker.Id,
         Territory = marker.Territory,
         Type = marker.Type,
-        X = marker.X,
-        Y = marker.Y,
-        Z = marker.Z,
+        X = marker.X, Y = marker.Y, Z = marker.Z,
         Confirmations = marker.Confirmations,
         Local = local,
         Synced = !local || synced,

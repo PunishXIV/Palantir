@@ -14,7 +14,7 @@ public class MarkerRow
     public float Y { get; set; }
     public float Z { get; set; }
     public int Confirmations { get; set; }
-
+    
     public bool Local { get; set; }
     public bool Synced { get; set; }
 
@@ -103,9 +103,7 @@ public sealed class Storage(string path, IPluginLog log) : IDisposable
                     Id = marker.Id,
                     Territory = marker.Territory,
                     Type = marker.Type,
-                    X = marker.X,
-                    Y = marker.Y,
-                    Z = marker.Z,
+                    X = marker.X, Y = marker.Y, Z = marker.Z,
                     Confirmations = 1,
                     Local = trust,
                     Synced = true,

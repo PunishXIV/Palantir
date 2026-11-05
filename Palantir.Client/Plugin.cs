@@ -23,7 +23,7 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] internal static IPluginLog Log { get; private set; } = null!;
 
     private const string Command = "/palantir";
-
+    
     private static readonly TimeSpan DisposeBudget = TimeSpan.FromSeconds(5);
 
     private readonly WindowSystem _windows = new("Palantir");
@@ -66,7 +66,7 @@ public sealed class Plugin : IDalamudPlugin
         _dungeon.Start();
         _renderer.Start();
         _ipc.Start();
-
+        
         if (_config.AutoConnect)
             _ = _network.EnableAsync(_config.SelectedServer);
 
@@ -87,7 +87,7 @@ public sealed class Plugin : IDalamudPlugin
         PluginInterface.UiBuilder.OpenConfigUi -= _settings.Toggle;
         _windows.RemoveAllWindows();
         CommandManager.RemoveHandler(Command);
-
+        
         _ipc.Dispose();
         _renderer.Dispose();
         _dungeon.Dispose();
