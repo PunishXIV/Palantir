@@ -23,7 +23,7 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] internal static IPluginLog Log { get; private set; } = null!;
 
     private const string Command = "/palantir";
-    
+
     private static readonly TimeSpan DisposeBudget = TimeSpan.FromSeconds(5);
 
     private readonly WindowSystem _windows = new("Palantir");
@@ -46,9 +46,9 @@ public sealed class Plugin : IDalamudPlugin
         _storage.Initialize();
 
         _network = new Network(_config, Log);
-        _dungeon = new DeepDungeon(_config, _storage, _network, ClientState, Condition, ObjectTable, Framework, GameInterop, Log);
-        _renderer = new Renderer(_config, _dungeon, ObjectTable, GameGui, PluginInterface, Log);
         _ipc = new Ipc(PluginInterface, _storage);
+        _dungeon = new DeepDungeon(_config, _storage, _network, _ipc, ClientState, Condition, ObjectTable, Framework, GameInterop, Log);
+        _renderer = new Renderer(_config, _dungeon, ObjectTable, GameGui, PluginInterface, Log);
 
         _settings = new ConfigWindow(_config, _network, Framework, Texture, _storage, _dungeon);
         var minimap = new MinimapWindow(_config, _dungeon, Texture);
@@ -66,7 +66,7 @@ public sealed class Plugin : IDalamudPlugin
         _dungeon.Start();
         _renderer.Start();
         _ipc.Start();
-        
+
         if (_config.AutoConnect)
             _ = _network.EnableAsync(_config.SelectedServer);
 
@@ -87,7 +87,7 @@ public sealed class Plugin : IDalamudPlugin
         PluginInterface.UiBuilder.OpenConfigUi -= _settings.Toggle;
         _windows.RemoveAllWindows();
         CommandManager.RemoveHandler(Command);
-        
+
         _ipc.Dispose();
         _renderer.Dispose();
         _dungeon.Dispose();
