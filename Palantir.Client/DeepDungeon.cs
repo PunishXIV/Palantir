@@ -33,6 +33,7 @@ public sealed partial class DeepDungeon(
     Configuration config,
     Storage storage,
     Network network,
+    Ipc ipc,
     IClientState clientState,
     ICondition condition,
     IObjectTable objects,
@@ -230,6 +231,8 @@ public sealed partial class DeepDungeon(
                 markers.Length, territory, added, markers.Length - added);
 
             await storage.Save(rows);
+
+            ipc.OnUpdated(storage.Traps(territory));
         }
         catch (Exception ex)
         {

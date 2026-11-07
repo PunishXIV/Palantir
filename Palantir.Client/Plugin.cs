@@ -46,9 +46,9 @@ public sealed class Plugin : IDalamudPlugin
         _storage.Initialize();
 
         _network = new Network(_config, Log);
-        _dungeon = new DeepDungeon(_config, _storage, _network, ClientState, Condition, ObjectTable, Framework, GameInterop, Log);
-        _renderer = new Renderer(_config, _dungeon, ObjectTable, GameGui, PluginInterface, Log);
         _ipc = new Ipc(PluginInterface, _storage);
+        _dungeon = new DeepDungeon(_config, _storage, _network, _ipc, ClientState, Condition, ObjectTable, Framework, GameInterop, Log);
+        _renderer = new Renderer(_config, _dungeon, ObjectTable, GameGui, PluginInterface, Log);
 
         _settings = new ConfigWindow(_config, _network, Framework, Texture, _storage, _dungeon);
         var minimap = new MinimapWindow(_config, _dungeon, Texture);

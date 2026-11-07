@@ -56,12 +56,12 @@ public sealed class Storage(string path, IPluginLog log) : IDisposable
         return await db.Markers.Where(m => m.Territory == territory).ToListAsync();
     }
 
-    public Vector3[] Traps(ushort territory)
+    public List<Vector3> Traps(ushort territory)
     {
         if (!Available) return [];
         using var db = new MarkerDb(_options);
         return db.Markers.Where(m => m.Territory == territory && m.Type == MarkerType.Trap)
-            .Select(m => new Vector3(m.X, m.Y, m.Z)).ToArray();
+            .Select(m => new Vector3(m.X, m.Y, m.Z)).ToList();
     }
 
     public async Task<List<MarkerRow>> Unsynced(ushort territory)
